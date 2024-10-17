@@ -7,6 +7,7 @@ struct Settings {
   bool ledEnable = true;
   uint8_t bright = 100;
   bool soundMode = false;
+  uint32_t autoSleepMinutes = 60;
 };
 
 Settings settings;

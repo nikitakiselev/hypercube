@@ -5,6 +5,7 @@
 #include "web.h"
 #endif
 
+
 Button btn(BTN_PIN, INPUT_PULLDOWN);
 
 void IRAM_ATTR buttonHandler() {
@@ -54,6 +55,23 @@ void print_wakeup_reason() {
   }
 }
 
+void powerDown() {
+  settings.powerState = false;
+  ledSetPower(settings.powerState);
+
+  Serial.printf("Current power state: %s\n", settings.powerState ? "On" : "Off");
+  Serial.println("Going to the deep sleep.");
+
+  esp_deep_sleep_start();
+}
+
+void checkSleepTimer() {
+  if (millis() > MINUTES_TO_MILLIS(settings.autoSleepMinutes)) {
+    Serial.println("Power down. Reason: auto sleep timer.");
+    powerDown();
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -95,7 +113,7 @@ void setup() {
 #endif
 
   delay(500);
-  
+
   ledSetPower(true);
 
   digitalWrite(TRANSISTOR_PIN, settings.powerState);
@@ -106,20 +124,16 @@ void loop() {
 
   btn.tick();
 
+  checkSleepTimer();
+
   // if (lastTransistorState != transistorState) {
   //   digitalWrite(TRANSISTOR_PIN, transistorState ? HIGH : LOW);
   //   lastTransistorState = transistorState;
   // }
 
   if (btn.hasClicks(1)) {
-    settings.powerState = ! settings.powerState;
-    ledSetPower(settings.powerState);
-
-    Serial.printf("Current power state: %s\n", settings.powerState ? "On" : "Off");    
-
-    if (settings.powerState == false) {
-      esp_deep_sleep_start();
-    }
+    Serial.println("Power down. Reason: power button clicked.");
+    powerDown();
   }
 
   if (btn.hold()) {
