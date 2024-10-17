@@ -1,17 +1,19 @@
 #include <Arduino.h>
 #include <FastLED.h>
 #include "config.h"
+#include "settings.h"
+#include "sound.h"
 
 // ===== ДЛЯ РАЗРАБОВ =====
 const int NUM_LEDS = (EDGE_LEDS * 24);
-CRGBPalette16 currentPalette;
+CRGBPalette16 currentPalette, linearPalette;
 const int FACE_SIZE = EDGE_LEDS * 4;
 const int LINE_SIZE = EDGE_LEDS;
 #define PAL_STEP 30
 CRGB leds[NUM_LEDS];
 
 int perlinPoint;
-int curBright = BRIGHT;
+int curBright = 50;
 bool fadeFlag = false;
 bool mode = true;
 bool colorMode = true;
@@ -97,42 +99,70 @@ uint32_t getEntropy(byte pin) {
   return seed;
 }
 
+void toggleLeds() {
+  settings.ledEnable = ! settings.ledEnable;
+  if (settings.ledEnable == false) {
+    FastLED.clear();
+    FastLED.show();
+  }
+
+  Serial.print("LED: ");
+  Serial.println(settings.ledEnable ? "On" : "Off");
+}
+
 void ledEffects( void * parameter) {
   for(;;) {
-    if (millis() - tmrDraw >= 30) {
-      tmrDraw = millis();
-      for (int i = 0; i < FACE_SIZE; i++) {
-        if (mode) fillSimple(i, ColorFromPalette(currentPalette, getMaxNoise(i * PAL_STEP + counter, counter), 255, LINEARBLEND));
-        else fillVertex(i, ColorFromPalette(currentPalette, getMaxNoise(i * PAL_STEP / 4 + counter, counter), 255, LINEARBLEND));
+    if (/* settings.ledEnable */ true) {
+      if (millis() - tmrDraw >= 20) {
+        tmrDraw = millis();
+
+        if (settings.soundMode == true) {
+          FastLED.clear();
+          int thisSound = getSoundLength();
+
+          int thisL = (float)FACE_SIZE * thisSound / 100.0 + 1;
+          thisL = constrain(thisL, 0, FACE_SIZE);
+          for (int i = 0; i < thisL; i++) {
+           fillVertex(i, ColorFromPalette(currentPalette, (float)255 * i / FACE_SIZE / 2 + counter / 4, 255, LINEARBLEND));
+           // fillColumns(i, ColorFromPalette(currentPalette, (float)255 * i / FACE_SIZE / 2 + counter / 10, 255, LINEARBLEND));
+          }
+
+        } else {
+          for (int i = 0; i < FACE_SIZE; i++) {
+            if (mode) fillSimple(i, ColorFromPalette(currentPalette, getMaxNoise(i * PAL_STEP + counter, counter), 255, LINEARBLEND));
+            else fillVertex(i, ColorFromPalette(currentPalette, getMaxNoise(i * PAL_STEP / 4 + counter, counter), 255, LINEARBLEND));
+          }
+        }
+
+        FastLED.show();
+        counter += speed;
       }
-      FastLED.show();
-      counter += speed;
-    }
 
-    // смена режима и цвета
-    if (millis() - tmrColor >= CHANGE_PRD * 1000L) {
-      tmrColor = millis();
-      fadeFlag = true;
-    }
+      // смена режима и цвета
+      if (millis() - tmrColor >= CHANGE_PRD * 1000L) {
+        tmrColor = millis();
+        fadeFlag = true;
+      }
 
-    // фейдер для смены через чёрный
-    if (fadeFlag && millis() - tmrFade >= 30) {
-      static int8_t fadeDir = -1;
-      tmrFade = millis();
-      if (fadeFlag) {
-        curBright += 5 * fadeDir;
+      // фейдер для смены через чёрный
+      if (fadeFlag && millis() - tmrFade >= 30) {
+        static int8_t fadeDir = -1;
+        tmrFade = millis();
+        if (fadeFlag) {
+          curBright += 5 * fadeDir;
 
-        if (curBright < 5) {
-          curBright = 5;
-          fadeDir = 1;
-          changeMode();
+          if (curBright < 5) {
+            curBright = 5;
+            fadeDir = 1;
+            changeMode();
+          }
+          if (curBright > settings.bright) {
+            curBright = settings.bright;
+            fadeDir = -1;
+            fadeFlag = false;
+          }
+          FastLED.setBrightness(curBright);
         }
-        if (curBright > BRIGHT) {
-          curBright = BRIGHT;
-          fadeDir = -1;
-          fadeFlag = false;
-        }
-        FastLED.setBrightness(curBright);
       }
     }
   }
@@ -141,7 +171,8 @@ void ledEffects( void * parameter) {
 void ledInitOnCore(const BaseType_t xCoreID) {
   FastLED.addLeds<WS2812, LED_DI, GRB>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   if (CUR_LIMIT > 0) FastLED.setMaxPowerInVoltsAndMilliamps(5, CUR_LIMIT);
-  FastLED.setBrightness(BRIGHT);
+  FastLED.setBrightness(settings.bright);
+  curBright = settings.bright;
   FastLED.clear();
 
   randomSeed(getEntropy(GPIO_NUM_36));   // My system's in decline, EMBRACING ENTROPY!

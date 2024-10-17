@@ -5,18 +5,21 @@
 #include <ESPAsyncWebServer.h>
 #include <AsyncJson.h>
 #include <esp32/clk.h>
+#include "settings.h"
 
 AsyncWebServer server(80);
+AsyncCallbackJsonWebHandler* jsonHandler = new AsyncCallbackJsonWebHandler("/settings");
+
 void notFound(AsyncWebServerRequest* request) {
   request->send(404, "text/plain", "Not found");
 }
 
 void webServerInit() {
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
+  server.on("/settings", HTTP_GET, [](AsyncWebServerRequest* request) {
     AsyncJsonResponse* response = new AsyncJsonResponse();
     JsonObject root = response->getRoot().to<JsonObject>();
 
-    root["bright"] = BRIGHT;
+    root["bright"] = FastLED.getBrightness();
     root["change_period"] = CHANGE_PRD;
     root["currency_limit"] = CUR_LIMIT;
     root["led_data_pin"] = LED_DI;
@@ -34,6 +37,25 @@ void webServerInit() {
     request->send(response);
   });
 
+  jsonHandler->onRequest([](AsyncWebServerRequest* request, JsonVariant& json) {
+    JsonObject jsonObj = json.as<JsonObject>();
+
+    uint8_t bright = jsonObj["bright"];
+
+    Serial.println(bright);
+
+    settings.bright = bright;
+    FastLED.setBrightness(bright);
+    memory.update();
+
+    // AsyncJsonResponse* response = new AsyncJsonResponse();
+    // JsonObject root = response->getRoot().to<JsonObject>();
+
+    // response->setLength();
+    request->send(204);
+  });
+
+  server.addHandler(jsonHandler);
   server.onNotFound(notFound);
   server.begin();
 }
