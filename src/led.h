@@ -99,6 +99,11 @@ uint32_t getEntropy(byte pin) {
   return seed;
 }
 
+void ledSetPower(bool state) {
+  settings.powerState = state;
+  digitalWrite(TRANSISTOR_PIN, settings.powerState);
+}
+
 void toggleLeds() {
   settings.ledEnable = ! settings.ledEnable;
   if (settings.ledEnable == false) {

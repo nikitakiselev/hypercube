@@ -57,6 +57,8 @@ void print_wakeup_reason() {
 void setup() {
   Serial.begin(115200);
 
+  ledSetPower(false);
+
   Serial.println();
   Serial.println();
   Serial.println("======== Arduino Hyper Cube ========");
@@ -85,11 +87,18 @@ void setup() {
   digitalWrite(TRANSISTOR_PIN, settings.powerState);
 
   ledInitOnCore(0);
+
 #ifdef WEB_SERVER_ENABLE
   //if (connectToWifi()) {
   //  webServerInit(); // starts on core from CONFIG_ASYNC_TCP_RUNNING_CORE
   //}
 #endif
+
+  delay(500);
+  
+  ledSetPower(true);
+
+  digitalWrite(TRANSISTOR_PIN, settings.powerState);
 }
 
 void loop() {
@@ -104,9 +113,9 @@ void loop() {
 
   if (btn.hasClicks(1)) {
     settings.powerState = ! settings.powerState;
+    ledSetPower(settings.powerState);
 
-    Serial.printf("Current power state: %s\n", settings.powerState ? "On" : "Off");
-    digitalWrite(TRANSISTOR_PIN, settings.powerState);
+    Serial.printf("Current power state: %s\n", settings.powerState ? "On" : "Off");    
 
     if (settings.powerState == false) {
       esp_deep_sleep_start();

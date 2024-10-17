@@ -3,7 +3,7 @@
 #include <EEManager.h>
 
 struct Settings { 
-  bool powerState = true;
+  bool powerState = false;
   bool ledEnable = true;
   uint8_t bright = 100;
   bool soundMode = false;
