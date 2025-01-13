@@ -116,6 +116,9 @@ void toggleLeds() {
 }
 
 void ledEffects( void * parameter) {
+      Serial.print("LED executing on core ");
+    Serial.println(xPortGetCoreID());
+
   for(;;) {
     if (/* settings.ledEnable */ true) {
       if (millis() - tmrDraw >= 20) {
